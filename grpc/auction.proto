@@ -1,0 +1,37 @@
+syntax = "proto3";
+package auction;
+option go_package = "auctionSystem/grpc;pb";
+
+service Auction {
+  rpc Bid(BidRequest) returns (BidReply);
+  rpc Result(ResultRequest) returns (ResultReply);
+}
+
+enum Status {
+  UNSPECIFIED = 0;
+  SUCCESS = 1;
+  FAIL = 2;
+  EXCEPTION = 3;
+}
+
+message BidRequest {
+  string clientId = 1;
+  int64 amount = 2;
+  int64 lamport = 3;
+}
+
+message BidReply {
+  Status status = 1;
+  int64 lamport = 3;
+}
+
+message ResultRequest {
+  int64 lamport = 1;
+}
+
+message ResultReply {
+  bool over = 1;
+  int64 highestBid = 2;
+  string highestBidder = 3;
+  int64 lamport = 4;
+}
