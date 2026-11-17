@@ -8,7 +8,7 @@ service Auction {
 }
 
 enum Status {
-  UNSPECIFIED = 0;
+  ACTIONOVER = 0;
   SUCCESS = 1;
   FAIL = 2;
   EXCEPTION = 3;
@@ -30,7 +30,7 @@ message ResultRequest {
 }
 
 message ResultReply {
-  bool over = 1;
+  bool auctionIsOver = 1;
   int64 highestBid = 2;
   string highestBidder = 3;
   int64 lamport = 4;
