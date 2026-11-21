@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Auction_Bid_FullMethodName    = "/auction.Auction/Bid"
-	Auction_Result_FullMethodName = "/auction.Auction/Result"
+	Auction_Bid_FullMethodName       = "/auction.Auction/Bid"
+	Auction_Result_FullMethodName    = "/auction.Auction/Result"
+	Auction_Replicate_FullMethodName = "/auction.Auction/Replicate"
 )
 
 // AuctionClient is the client API for Auction service.
@@ -29,6 +30,7 @@ const (
 type AuctionClient interface {
 	Bid(ctx context.Context, in *BidRequest, opts ...grpc.CallOption) (*BidReply, error)
 	Result(ctx context.Context, in *ResultRequest, opts ...grpc.CallOption) (*ResultReply, error)
+	Replicate(ctx context.Context, in *StateUpdate, opts ...grpc.CallOption) (*Ack, error)
 }
 
 type auctionClient struct {
@@ -59,12 +61,23 @@ func (c *auctionClient) Result(ctx context.Context, in *ResultRequest, opts ...g
 	return out, nil
 }
 
+func (c *auctionClient) Replicate(ctx context.Context, in *StateUpdate, opts ...grpc.CallOption) (*Ack, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Ack)
+	err := c.cc.Invoke(ctx, Auction_Replicate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuctionServer is the server API for Auction service.
 // All implementations must embed UnimplementedAuctionServer
 // for forward compatibility.
 type AuctionServer interface {
 	Bid(context.Context, *BidRequest) (*BidReply, error)
 	Result(context.Context, *ResultRequest) (*ResultReply, error)
+	Replicate(context.Context, *StateUpdate) (*Ack, error)
 	mustEmbedUnimplementedAuctionServer()
 }
 
@@ -80,6 +93,9 @@ func (UnimplementedAuctionServer) Bid(context.Context, *BidRequest) (*BidReply, 
 }
 func (UnimplementedAuctionServer) Result(context.Context, *ResultRequest) (*ResultReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Result not implemented")
+}
+func (UnimplementedAuctionServer) Replicate(context.Context, *StateUpdate) (*Ack, error) {
+	return nil, status.Error(codes.Unimplemented, "method Replicate not implemented")
 }
 func (UnimplementedAuctionServer) mustEmbedUnimplementedAuctionServer() {}
 func (UnimplementedAuctionServer) testEmbeddedByValue()                 {}
@@ -138,6 +154,24 @@ func _Auction_Result_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Auction_Replicate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StateUpdate)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).Replicate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_Replicate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).Replicate(ctx, req.(*StateUpdate))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Auction_ServiceDesc is the grpc.ServiceDesc for Auction service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +186,10 @@ var Auction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Result",
 			Handler:    _Auction_Result_Handler,
+		},
+		{
+			MethodName: "Replicate",
+			Handler:    _Auction_Replicate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

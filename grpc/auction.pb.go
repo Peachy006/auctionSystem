@@ -297,6 +297,110 @@ func (x *ResultReply) GetLamport() int64 {
 	return 0
 }
 
+type StateUpdate struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClientId      string                 `protobuf:"bytes,1,opt,name=clientId,proto3" json:"clientId,omitempty"`
+	Amount        int64                  `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	Lamport       int64                  `protobuf:"varint,3,opt,name=lamport,proto3" json:"lamport,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StateUpdate) Reset() {
+	*x = StateUpdate{}
+	mi := &file_grpc_auction_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StateUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StateUpdate) ProtoMessage() {}
+
+func (x *StateUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_grpc_auction_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StateUpdate.ProtoReflect.Descriptor instead.
+func (*StateUpdate) Descriptor() ([]byte, []int) {
+	return file_grpc_auction_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *StateUpdate) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *StateUpdate) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *StateUpdate) GetLamport() int64 {
+	if x != nil {
+		return x.Lamport
+	}
+	return 0
+}
+
+type Ack struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Lamport       int64                  `protobuf:"varint,1,opt,name=lamport,proto3" json:"lamport,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Ack) Reset() {
+	*x = Ack{}
+	mi := &file_grpc_auction_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Ack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Ack) ProtoMessage() {}
+
+func (x *Ack) ProtoReflect() protoreflect.Message {
+	mi := &file_grpc_auction_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Ack.ProtoReflect.Descriptor instead.
+func (*Ack) Descriptor() ([]byte, []int) {
+	return file_grpc_auction_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Ack) GetLamport() int64 {
+	if x != nil {
+		return x.Lamport
+	}
+	return 0
+}
+
 var File_grpc_auction_proto protoreflect.FileDescriptor
 
 const file_grpc_auction_proto_rawDesc = "" +
@@ -318,16 +422,23 @@ const file_grpc_auction_proto_rawDesc = "" +
 	"highestBid\x18\x02 \x01(\x03R\n" +
 	"highestBid\x12$\n" +
 	"\rhighestBidder\x18\x03 \x01(\tR\rhighestBidder\x12\x18\n" +
-	"\alamport\x18\x04 \x01(\x03R\alamport*>\n" +
+	"\alamport\x18\x04 \x01(\x03R\alamport\"[\n" +
+	"\vStateUpdate\x12\x1a\n" +
+	"\bclientId\x18\x01 \x01(\tR\bclientId\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\x03R\x06amount\x12\x18\n" +
+	"\alamport\x18\x03 \x01(\x03R\alamport\"\x1f\n" +
+	"\x03Ack\x12\x18\n" +
+	"\alamport\x18\x01 \x01(\x03R\alamport*>\n" +
 	"\x06Status\x12\x0e\n" +
 	"\n" +
 	"ACTIONOVER\x10\x00\x12\v\n" +
 	"\aSUCCESS\x10\x01\x12\b\n" +
 	"\x04FAIL\x10\x02\x12\r\n" +
-	"\tEXCEPTION\x10\x032p\n" +
+	"\tEXCEPTION\x10\x032\xa1\x01\n" +
 	"\aAuction\x12-\n" +
 	"\x03Bid\x12\x13.auction.BidRequest\x1a\x11.auction.BidReply\x126\n" +
-	"\x06Result\x12\x16.auction.ResultRequest\x1a\x14.auction.ResultReplyB\x17Z\x15auctionSystem/grpc;pbb\x06proto3"
+	"\x06Result\x12\x16.auction.ResultRequest\x1a\x14.auction.ResultReply\x12/\n" +
+	"\tReplicate\x12\x14.auction.StateUpdate\x1a\f.auction.AckB\x17Z\x15auctionSystem/grpc;pbb\x06proto3"
 
 var (
 	file_grpc_auction_proto_rawDescOnce sync.Once
@@ -342,22 +453,26 @@ func file_grpc_auction_proto_rawDescGZIP() []byte {
 }
 
 var file_grpc_auction_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_grpc_auction_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_grpc_auction_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_grpc_auction_proto_goTypes = []any{
 	(Status)(0),           // 0: auction.Status
 	(*BidRequest)(nil),    // 1: auction.BidRequest
 	(*BidReply)(nil),      // 2: auction.BidReply
 	(*ResultRequest)(nil), // 3: auction.ResultRequest
 	(*ResultReply)(nil),   // 4: auction.ResultReply
+	(*StateUpdate)(nil),   // 5: auction.StateUpdate
+	(*Ack)(nil),           // 6: auction.Ack
 }
 var file_grpc_auction_proto_depIdxs = []int32{
 	0, // 0: auction.BidReply.status:type_name -> auction.Status
 	1, // 1: auction.Auction.Bid:input_type -> auction.BidRequest
 	3, // 2: auction.Auction.Result:input_type -> auction.ResultRequest
-	2, // 3: auction.Auction.Bid:output_type -> auction.BidReply
-	4, // 4: auction.Auction.Result:output_type -> auction.ResultReply
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
+	5, // 3: auction.Auction.Replicate:input_type -> auction.StateUpdate
+	2, // 4: auction.Auction.Bid:output_type -> auction.BidReply
+	4, // 5: auction.Auction.Result:output_type -> auction.ResultReply
+	6, // 6: auction.Auction.Replicate:output_type -> auction.Ack
+	4, // [4:7] is the sub-list for method output_type
+	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -374,7 +489,7 @@ func file_grpc_auction_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_grpc_auction_proto_rawDesc), len(file_grpc_auction_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

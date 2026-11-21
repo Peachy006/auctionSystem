@@ -5,6 +5,7 @@ option go_package = "auctionSystem/grpc;pb";
 service Auction {
   rpc Bid(BidRequest) returns (BidReply);
   rpc Result(ResultRequest) returns (ResultReply);
+  rpc Replicate(StateUpdate) returns (Ack);
 }
 
 enum Status {
@@ -34,4 +35,14 @@ message ResultReply {
   int64 highestBid = 2;
   string highestBidder = 3;
   int64 lamport = 4;
+}
+
+message StateUpdate {
+  string clientId = 1;
+  int64 amount = 2;
+  int64 lamport = 3;
+}
+
+message Ack {
+  int64 lamport = 1;
 }
