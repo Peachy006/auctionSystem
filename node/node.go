@@ -4,7 +4,9 @@ import (
 	pb "auctionSystem/grpc"
 	"context"
 	"fmt"
+	"log"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -29,7 +31,7 @@ type bidInstance struct {
 func (n *Node) Bid(ctx context.Context, req *pb.BidRequest) (*pb.BidReply, error) {
 	n.mu.Lock()
 	//update time
-	n.lamport = max(n.lamport, req.lamport) + 1
+	n.lamport = max(n.lamport, req.Lamport) + 1
 	now := n.lamport
 
 	//check if over
@@ -94,9 +96,25 @@ func (n *Node) connectOthers(ports []int64) error {
 }
 
 func (n *Node) Broadcast(currentBid bidInstance) {
-	for _, other := range n.peers {
-
+	updated := &pb.StateUpdate{
+		ClientId: currentBid.clientId,
+		Amount:   currentBid.amount,
+		Lamport:  currentBid.lamport,
 	}
+
+	var wg sync.WaitGroup
+	for _, peer := range n.peers {
+		wg.Add(1)
+		go func(p pb.AuctionClient) {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			if _, err := p.Replicate(ctx, updated); err != nil {
+				log.Printf("Node couldnt replicate to peer: %v", err)
+			}
+		}(peer)
+	}
+	wg.Wait()
 }
 
 func (b bidInstance) beats(cur bidInstance) bool {
