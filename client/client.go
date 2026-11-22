@@ -19,7 +19,7 @@ type Client struct {
 	lamport int64
 }
 
-var currentNode = 1
+var currentNode = 0
 
 func NewClient(name string, ids []int) (*Client, error) {
 	client := &Client{name: name}
@@ -61,10 +61,9 @@ func (c *Client) Result() (*as.ResultReply, error) {
 	c.lamport++
 	req := &as.ResultRequest{Lamport: c.lamport}
 
-	for i, node := range c.nodes {
+	for _, node := range c.nodes {
 		reply, err := node.Result(context.Background(), req)
 		if err != nil {
-			log.Printf("error getting result from node %d: %v", i+1, err)
 			continue
 		}
 		c.updateLamport(reply.Lamport)
@@ -75,7 +74,7 @@ func (c *Client) Result() (*as.ResultReply, error) {
 
 func (c *Client) PrintResult(reply *as.ResultReply) {
 	if reply.AuctionIsOver {
-		log.Printf("Auction over, the Winner: %s with %d", reply.HighestBidder, reply.HighestBid)
+		log.Printf("Auction over, the winner is: %s with %d", reply.HighestBidder, reply.HighestBid)
 	} else {
 		log.Printf("highest bid is %d by %s", reply.HighestBid, reply.HighestBidder)
 	}
@@ -95,7 +94,7 @@ func main() {
 		return
 	}
 
-	ids := []int{5000, 5001, 5002, 5003, 5004, 5005, 5006, 5007} //nodes hardcoded
+	ids := []int{5000, 5001, 5002, 5003, 5004, 5005, 5006, 5007}
 
 	client, err := NewClient(name, ids)
 	if err != nil {
@@ -110,7 +109,7 @@ func main() {
 	for range ticker.C {
 		switch rand.Intn(5) + 1 {
 
-		case 1: // read the max, then outbid it by 2
+		case 1:
 			reply, err := client.Result()
 			if err != nil {
 				log.Print(err)

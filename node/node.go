@@ -18,12 +18,18 @@ import (
 
 const auctionDone = 200
 
+type peer struct {
+	client pb.AuctionClient
+	addr   string
+	dead   bool
+}
+
 type Node struct {
 	pb.UnimplementedAuctionServer
 	mu      sync.Mutex
 	lamport int64
 	winner  bidInstance
-	peers   []pb.AuctionClient
+	peers   []*peer
 	id      int64
 }
 
@@ -91,14 +97,12 @@ func (n *Node) connectOthers(ports []int64) error {
 		if p == n.id {
 			continue
 		}
-		conn, err := grpc.NewClient(
-			fmt.Sprintf("localhost:%d", p),
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-		)
+		addr := fmt.Sprintf("localhost:%d", p)
+		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return err
 		}
-		n.peers = append(n.peers, pb.NewAuctionClient(conn))
+		n.peers = append(n.peers, &peer{client: pb.NewAuctionClient(conn), addr: addr})
 	}
 	return nil
 }
@@ -111,17 +115,28 @@ func (n *Node) Broadcast(currentBid bidInstance) {
 	}
 
 	var wg sync.WaitGroup
-	for _, peer := range n.peers {
+	for _, p := range n.peers {
+		n.mu.Lock()
+		dead := p.dead
+		n.mu.Unlock()
+		if dead {
+			continue
+		}
 
 		wg.Add(1)
-		go func(p pb.AuctionClient) {
+		go func(p *peer) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			if _, err := p.Replicate(ctx, updated); err != nil {
-				log.Printf("Node couldnt replicate to peer: %v", err)
+			if _, err := p.client.Replicate(ctx, updated); err != nil {
+				n.mu.Lock()
+				if !p.dead {
+					p.dead = true
+					log.Printf("peer %s unreachable - no longer replicating to it", p.addr)
+				}
+				n.mu.Unlock()
 			}
-		}(peer)
+		}(p)
 	}
 	wg.Wait()
 }
