@@ -136,7 +136,7 @@ func (x *BidRequest) GetLamport() int64 {
 type BidReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Status        Status                 `protobuf:"varint,1,opt,name=status,proto3,enum=auction.Status" json:"status,omitempty"`
-	Lamport       int64                  `protobuf:"varint,3,opt,name=lamport,proto3" json:"lamport,omitempty"`
+	Lamport       int64                  `protobuf:"varint,2,opt,name=lamport,proto3" json:"lamport,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -413,7 +413,7 @@ const file_grpc_auction_proto_rawDesc = "" +
 	"\alamport\x18\x03 \x01(\x03R\alamport\"M\n" +
 	"\bBidReply\x12'\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x0f.auction.StatusR\x06status\x12\x18\n" +
-	"\alamport\x18\x03 \x01(\x03R\alamport\")\n" +
+	"\alamport\x18\x02 \x01(\x03R\alamport\")\n" +
 	"\rResultRequest\x12\x18\n" +
 	"\alamport\x18\x01 \x01(\x03R\alamport\"\x93\x01\n" +
 	"\vResultReply\x12$\n" +

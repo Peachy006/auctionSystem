@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
+	"time"
 
 	as "auctionSystem/grpc"
 
@@ -17,11 +19,13 @@ type Client struct {
 	lamport int64
 }
 
+var currentNode = 1
+
 func NewClient(name string, ids []int) (*Client, error) {
 	client := &Client{name: name}
 
 	for _, id := range ids {
-		addr := fmt.Sprintf("localhost:%d", 1000+id)
+		addr := fmt.Sprintf("localhost:%d", id)
 		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return nil, err
@@ -36,9 +40,13 @@ func (c *Client) Bid(amount int) {
 	req := &as.BidRequest{ClientId: c.name, Amount: int64(amount), Lamport: c.lamport}
 
 	for i, node := range c.nodes {
+		if i < currentNode {
+			continue
+		}
 		reply, err := node.Bid(context.Background(), req)
 		if err != nil {
-			log.Printf("Error sending bid to node %d: %v", i+1, err)
+			log.Printf("Error sending bid to node %d", i+1)
+			currentNode++
 			continue
 		}
 
@@ -49,26 +57,28 @@ func (c *Client) Bid(amount int) {
 	log.Printf("Failed to send bid to any node")
 }
 
-func (c *Client) Result() {
+func (c *Client) Result() (*as.ResultReply, error) {
 	c.lamport++
 	req := &as.ResultRequest{Lamport: c.lamport}
 
 	for i, node := range c.nodes {
 		reply, err := node.Result(context.Background(), req)
 		if err != nil {
-			log.Printf("Error requesting result from node %d: %v", i+1, err)
+			log.Printf("error getting result from node %d: %v", i+1, err)
 			continue
 		}
-
 		c.updateLamport(reply.Lamport)
-		if reply.AuctionIsOver {
-			log.Printf("Auction is over. Winner: %s with bid: %d", reply.winner, reply.HighestBid)
-		} else {
-			log.Printf("highest bid: %d by %s", reply.HighestBid, reply.winner)
-		}
-		return
+		return reply, nil
 	}
-	log.Printf("Failed to get result from any node")
+	return nil, fmt.Errorf("no node answered")
+}
+
+func (c *Client) PrintResult(reply *as.ResultReply) {
+	if reply.AuctionIsOver {
+		log.Printf("Auction over, the Winner: %s with %d", reply.HighestBidder, reply.HighestBid)
+	} else {
+		log.Printf("highest bid is %d by %s", reply.HighestBid, reply.HighestBidder)
+	}
 }
 
 func (c *Client) updateLamport(received int64) {
@@ -76,4 +86,53 @@ func (c *Client) updateLamport(received int64) {
 		c.lamport = received
 	}
 	c.lamport++
+}
+
+func main() {
+	var name string
+	fmt.Print("Enter your name: ")
+	if _, err := fmt.Scan(&name); err != nil {
+		return
+	}
+
+	ids := []int{5000, 5001, 5002, 5003, 5004, 5005, 5006, 5007} //nodes hardcoded
+
+	client, err := NewClient(name, ids)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("You can now bid and see result")
+	fmt.Println("To place a bid: 'bid <amount>' to see result of bidding: 'result'")
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		switch rand.Intn(5) + 1 {
+
+		case 1: // read the max, then outbid it by 2
+			reply, err := client.Result()
+			if err != nil {
+				log.Print(err)
+				continue
+			}
+			if reply.AuctionIsOver {
+				client.PrintResult(reply)
+				return
+			}
+			client.Bid(int(reply.HighestBid) + 2)
+
+		case 2: // just look
+			reply, err := client.Result()
+			if err != nil {
+				log.Print(err)
+				continue
+			}
+			client.PrintResult(reply)
+			if reply.AuctionIsOver {
+				return
+			}
+		}
+	}
+
 }

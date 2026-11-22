@@ -3,8 +3,12 @@ package main
 import (
 	pb "auctionSystem/grpc"
 	"context"
+	"flag"
 	"fmt"
 	"log"
+	"net"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,7 +16,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const auctionDone = 100
+const auctionDone = 200
 
 type Node struct {
 	pb.UnimplementedAuctionServer
@@ -20,6 +24,7 @@ type Node struct {
 	lamport int64
 	winner  bidInstance
 	peers   []pb.AuctionClient
+	id      int64
 }
 
 type bidInstance struct {
@@ -31,13 +36,15 @@ type bidInstance struct {
 func (n *Node) Bid(ctx context.Context, req *pb.BidRequest) (*pb.BidReply, error) {
 	n.mu.Lock()
 	//update time
-	n.lamport = max(n.lamport, req.Lamport) + 1
+	n.lamport = max(n.lamport, req.Lamport)
+	n.tick()
+
 	now := n.lamport
 
 	//check if over
 	if n.auctionOver() {
 		n.mu.Unlock()
-		return &pb.BidReply{Status: pb, pb.status_ACTIONVER, lamport: now}, nil
+		return &pb.BidReply{Status: pb.Status_ACTIONOVER, Lamport: now}, nil
 	}
 
 	//check if valid bid
@@ -56,6 +63,7 @@ func (n *Node) Bid(ctx context.Context, req *pb.BidRequest) (*pb.BidReply, error
 	}
 
 	//assume here it beats
+	currentBid.lamport++
 	n.winner = currentBid
 	n.mu.Unlock()
 
@@ -67,22 +75,22 @@ func (n *Node) Bid(ctx context.Context, req *pb.BidRequest) (*pb.BidReply, error
 func (n *Node) Result(ctx context.Context, req *pb.ResultRequest) (*pb.ResultReply, error) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
+	n.lamport = max(n.lamport, req.Lamport)
+	n.tick()
 
-	resReply := &pb.ResultReply{}
-	// Auction is over
-	if n.auctionOver() {
-		resReply.AuctionIsOver = true
-	} else {
-		resReply.AuctionIsOver = false
-	}
-	n.lamport++
-	resReply.HighestBidder = n.winner.clientId
-	resReply.HighestBid = n.winner.amount
-	return nil, ctx.Err()
+	return &pb.ResultReply{
+		AuctionIsOver: n.auctionOver(),
+		HighestBid:    n.winner.amount,
+		HighestBidder: n.winner.clientId,
+		Lamport:       n.lamport,
+	}, nil
 }
 
 func (n *Node) connectOthers(ports []int64) error {
 	for _, p := range ports {
+		if p == n.id {
+			continue
+		}
 		conn, err := grpc.NewClient(
 			fmt.Sprintf("localhost:%d", p),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -104,6 +112,7 @@ func (n *Node) Broadcast(currentBid bidInstance) {
 
 	var wg sync.WaitGroup
 	for _, peer := range n.peers {
+
 		wg.Add(1)
 		go func(p pb.AuctionClient) {
 			defer wg.Done()
@@ -132,4 +141,71 @@ func (b bidInstance) beats(cur bidInstance) bool {
 
 func (n *Node) auctionOver() bool {
 	return n.lamport > auctionDone
+}
+
+func main() {
+	port := flag.Int64("port", 5000, "self port")
+	peers := flag.String("peers", "", "other nodes, seperate by comma")
+	flag.Parse()
+
+	ports, err := parsePorts(*peers)
+	if err != nil {
+		log.Fatalf("bad -peers: %v", err)
+	}
+
+	node := &Node{
+		id: *port,
+	}
+
+	node.tick()
+
+	if err := node.connectOthers(ports); err != nil {
+		log.Fatalf("Error connecting: %v", err)
+	}
+
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
+
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+
+	server := grpc.NewServer()
+	pb.RegisterAuctionServer(server, node)
+
+	if err := server.Serve(lis); err != nil {
+		log.Fatalf("server: %v", err)
+	}
+}
+
+func parsePorts(s string) ([]int64, error) {
+	var ports []int64
+	for _, field := range strings.Split(s, ",") {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		port, err := strconv.ParseInt(field, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		ports = append(ports, port)
+	}
+	return ports, nil
+}
+
+func (n *Node) Replicate(ctx context.Context, req *pb.StateUpdate) (*pb.Ack, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.lamport = max(n.lamport, req.Lamport)
+	n.tick()
+
+	incoming := bidInstance{amount: req.Amount, lamport: req.Lamport, clientId: req.ClientId}
+	if incoming.beats(n.winner) {
+		n.winner = incoming
+	}
+	return &pb.Ack{Lamport: n.lamport}, nil
+}
+
+func (n *Node) tick() {
+	n.lamport++
 }
